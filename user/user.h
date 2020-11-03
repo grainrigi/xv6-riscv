@@ -1,3 +1,6 @@
+// from include/hw/intc/sifive_clint.h (SIFIVE_CLINT_TIMEBASE_FREQ) in qemu
+#define CLOCKS_PER_SEC 10000000
+
 struct stat;
 struct rtcdate;
 
@@ -23,6 +26,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+unsigned long clock(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

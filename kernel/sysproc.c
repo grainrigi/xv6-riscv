@@ -95,3 +95,10 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+// return the current value of RTC
+uint64
+sys_clock(void)
+{
+  return *(uint64*)CLINT_MTIME;
+}
