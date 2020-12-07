@@ -181,16 +181,14 @@ isdirempty(struct inode *dp)
   return 1;
 }
 
+
 uint64
-sys_unlink(void)
+unlink_impl(char *path)
 {
   struct inode *ip, *dp;
   struct dirent de;
-  char name[DIRSIZ], path[MAXPATH];
+  char name[DIRSIZ];
   uint off;
-
-  if(argstr(0, path, MAXPATH) < 0)
-    return -1;
 
   begin_op();
   if((dp = nameiparent(path, name)) == 0){
@@ -236,6 +234,17 @@ bad:
   iunlockput(dp);
   end_op();
   return -1;
+}
+
+uint64
+sys_unlink(void)
+{
+  char path[MAXPATH];
+
+  if(argstr(0, path, MAXPATH) < 0)
+    return -1;
+
+  return unlink_impl(path);
 }
 
 static struct inode*
@@ -523,6 +532,47 @@ sys_lseek(void)
   }
   
   f->off = newoff;
+
+  return 0;
+}
+
+uint64
+sys_symlink(void) {
+  char new[MAXPATH], old[MAXPATH];
+  struct inode *ip;
+  struct file f;
+  int oldlen;
+
+  if(argstr(0, old, MAXPATH) < 0 || argstr(1, new, MAXPATH) < 0)
+    return -1;
+
+  begin_op();
+
+  printf("symlink: %s -> %s\n", old, new);
+
+  if ((ip = create(new, T_SYMLINK, 0, 0)) == 0) {
+    end_op();
+    return -1;
+  }
+
+  // unlock only (we use it later to write content)
+  iunlock(ip);
+
+  oldlen = strlen(old);
+  // temporary file descriptor
+  f.type = FD_INODE;
+  f.ip = ip;
+  f.off = 0;
+  f.writable = 1;
+  if (filewritek(&f, old, oldlen) == -1) {
+    unlink_impl(new);
+    end_op();
+    return -1;
+  }
+
+  // ip is no longer needed
+  iput(ip);
+  end_op();
 
   return 0;
 }
