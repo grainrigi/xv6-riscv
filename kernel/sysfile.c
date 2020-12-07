@@ -548,8 +548,6 @@ sys_symlink(void) {
 
   begin_op();
 
-  printf("symlink: %s -> %s\n", old, new);
-
   if ((ip = create(new, T_SYMLINK, 0, 0)) == 0) {
     end_op();
     return -1;
