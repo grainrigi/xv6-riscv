@@ -487,3 +487,42 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64
+sys_lseek(void)
+{
+  int offset, whence;
+  int newoff;
+  struct file *f;
+
+  if(argfd(0, 0, &f) < 0 || argint(1, &offset) < 0 || argint(2, &whence))
+    return -1;
+
+  if (f->type != FD_INODE)
+    return -1;
+
+  switch (whence) {
+    case SEEK_SET: newoff = offset; break;
+    case SEEK_CUR: newoff = f->off + offset; break;
+    case SEEK_END: newoff = f->ip->size + offset; break;
+    default: return -1;
+  }
+
+  if (newoff < 0 || newoff > MAXFILE*BSIZE)
+    return -1;
+
+  // extend file
+  if (newoff > f->ip->size) {
+    char null = 0;
+    int extend_size = newoff - f->ip->size;
+    f->off = f->ip->size;
+    for (int i = 0; i < extend_size; i++) {
+      if (filewritek(f, &null, 1) == -1)
+        return -1;
+    }
+  }
+  
+  f->off = newoff;
+
+  return 0;
+}
