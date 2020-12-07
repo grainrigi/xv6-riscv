@@ -129,10 +129,8 @@ fileread(struct file *f, uint64 addr, int n)
   return r;
 }
 
-// Write to file f.
-// addr is a user virtual address.
 int
-filewrite(struct file *f, uint64 addr, int n)
+filewrite_impl(struct file *f, int user_src, uint64 addr, int n)
 {
   int r, ret = 0;
 
@@ -166,13 +164,11 @@ filewrite(struct file *f, uint64 addr, int n)
 
       begin_op();
       ilock(f->ip);
-      if ((r = writei(f->ip, 1, addr + i, f->off, n1)) > 0)
+      if ((r = writei(f->ip, user_src, addr + i, f->off, n1)) > 0)
         f->off += r;
       iunlock(f->ip);
       end_op();
 
-      if(r < 0)
-        break;
       if(r != n1)
         panic("short filewrite");
       i += r;
@@ -182,6 +178,21 @@ filewrite(struct file *f, uint64 addr, int n)
     panic("filewrite");
   }
 
+
   return ret;
+}
+
+
+// Write to file f.
+// addr is a user virtual address.
+int
+filewrite(struct file *f, uint64 addr, int n) {
+  return filewrite_impl(f, 1, addr, n);
+}
+
+// write content from kernel address
+int
+filewritek(struct file *f, void *addr, int n) {
+  return filewrite_impl(f, 0, (uint64)addr, n);
 }
 
