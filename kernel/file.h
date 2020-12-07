@@ -13,6 +13,9 @@ struct file {
 #define minor(dev)  ((dev) & 0xFFFF)
 #define	mkdev(m,n)  ((uint)((m)<<16| (n)))
 
+#define FILE_WRITABLE   (1)
+#define FILE_APPENDING  (2)
+
 // in-memory copy of an inode
 struct inode {
   uint dev;           // Device number

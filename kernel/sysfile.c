@@ -340,6 +340,9 @@ sys_open(void)
   f->ip = ip;
   f->readable = !(omode & O_WRONLY);
   f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+  if (f->ip->type == T_FILE && f->writable && (omode & O_APPEND)) {
+    f->writable |= FILE_APPENDING;
+  }
 
   if((omode & O_TRUNC) && ip->type == T_FILE){
     itrunc(ip);

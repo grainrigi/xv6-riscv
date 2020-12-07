@@ -136,7 +136,12 @@ filewrite(struct file *f, uint64 addr, int n)
 {
   int r, ret = 0;
 
-  if(f->writable == 0)
+  // process append
+  if (f->writable & FILE_APPENDING) {
+    f->off = f->ip->size;
+  }
+
+  if(!(f->writable & FILE_WRITABLE))
     return -1;
 
   if(f->type == FD_PIPE){
