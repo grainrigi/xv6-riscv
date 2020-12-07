@@ -101,10 +101,8 @@ filestat(struct file *f, uint64 addr)
   return -1;
 }
 
-// Read from file f.
-// addr is a user virtual address.
 int
-fileread(struct file *f, uint64 addr, int n)
+fileread_impl(struct file *f, int user_src, uint64 addr, int n)
 {
   int r = 0;
 
@@ -119,7 +117,7 @@ fileread(struct file *f, uint64 addr, int n)
     r = devsw[f->major].read(1, addr, n);
   } else if(f->type == FD_INODE){
     ilock(f->ip);
-    if((r = readi(f->ip, 1, addr, f->off, n)) > 0)
+    if((r = readi(f->ip, user_src, addr, f->off, n)) > 0)
       f->off += r;
     iunlock(f->ip);
   } else {
@@ -127,6 +125,21 @@ fileread(struct file *f, uint64 addr, int n)
   }
 
   return r;
+}
+
+// Read from file f.
+// addr is a user virtual address.
+int
+fileread(struct file *f, uint64 addr, int n)
+{
+  return fileread_impl(f, 1, addr, n);
+}
+
+// read file content into kernel memory
+int
+filereadk(struct file *f, void* addr, int n)
+{
+  return fileread_impl(f, 0, (uint64)addr, n);
 }
 
 int

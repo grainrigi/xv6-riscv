@@ -628,6 +628,10 @@ static struct inode*
 namex(char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
+  struct file f = { .type = FD_INODE, .readable = 1 };
+  char symdest[MAXPATH+1];
+  int r;
+  int symlimit = 41;
 
   if(*path == '/')
     ip = iget(ROOTDEV, ROOTINO);
@@ -637,6 +641,10 @@ namex(char *path, int nameiparent, char *name)
   while((path = skipelem(path, name)) != 0){
     ilock(ip);
     if(ip->type != T_DIR){
+      /*
+      if (ip->type == T_SYMLINK)
+        goto symlink;
+      */
       iunlockput(ip);
       return 0;
     }
@@ -649,8 +657,42 @@ namex(char *path, int nameiparent, char *name)
       iunlockput(ip);
       return 0;
     }
-    iunlockput(ip);
-    ip = next;
+    // handle symlink
+    iunlock(ip); // acquire multiple lock is not possible
+    ilock(next);
+    if (next->type == T_SYMLINK) {
+      iunlock(next);
+      if (symlimit-- < 0) {
+        // too deep symlink: possibly looped
+        iput(next);
+        iput(ip);
+        return 0;
+      }
+
+      // read symlink path
+      f.ip = next;
+      f.off = 0;
+      r = filereadk(&f, symdest, MAXPATH);
+      symdest[r] = '\0';
+      iput(next);
+
+      if (r == -1) {
+        iput(ip);
+        return 0;
+      }
+
+      // restart path lookup
+      path = symdest;
+      if (*path == '/') {
+        // replace cwd with root
+        iput(ip);
+        ip = iget(ROOTDEV, ROOTINO);
+      }
+    } else {
+      iunlock(next);
+      iput(ip);
+      ip = next;
+    }
   }
   if(nameiparent){
     iput(ip);
